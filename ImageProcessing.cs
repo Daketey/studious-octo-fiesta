@@ -13,8 +13,6 @@ using System.Windows.Forms;
 using Emgu.CV.Util;
 using Emgu.CV.Ocl;
 using System.Diagnostics;
-using AForge.Imaging;
-using AForge;
 
 namespace Imagecaptureexp
 {
@@ -23,6 +21,7 @@ namespace Imagecaptureexp
         VideoCapture capture;
         private Mat frame;
         Rectangle[] rects;
+        public Stopwatch watch { get; set; }
         public Form1()
         {
             InitializeComponent();
@@ -34,23 +33,17 @@ namespace Imagecaptureexp
             Console.WriteLine(111);
             if (capture != null)
             {
-
                 try
                 { capture.Start(); }
 
                 catch (Exception e)
-                { }
-
+                { Console.WriteLine("Failed"); }
             }
         }
 
-       // FilterInfoCollection filter;
-        
-        int imagenumber = 0;
-
         private void ProcessFrame(object sender, EventArgs e)
-        { 
-          if(capture!=null && capture.Ptr != IntPtr.Zero)
+        {
+            if (capture != null && capture.Ptr != IntPtr.Zero)
             {
                 capture.Retrieve(frame, 0);
                 picbox.Image = frame.Bitmap;
@@ -58,51 +51,42 @@ namespace Imagecaptureexp
             }
         }
 
-            private void Form1_Load(object sender, EventArgs e)
+        private void Form1_Load(object sender, EventArgs e)
         {
             //capture.ImageGrabbed += Device_NewFrame;
-            capture.ImageGrabbed += takesnap;
-
+            capture.ImageGrabbed += Imageprocess;
         }
 
-        public Stopwatch watch { get; set; }
+        int imagenumber = 0;
 
-        private void takesnap(object sender, EventArgs eventArgs)
+        private void Imageprocess(object sender, EventArgs eventArgs)
         {
-            
+
 
             capture.Retrieve(frame, 0);
             Image<Gray, byte> capturedimage = frame.ToImage<Gray, byte>();
 
             //Image<Gray, byte> gray_image = capturedimage.Convert<Gray, byte>();
+            Image<Gray, byte> gauss = capturedimage.SmoothGaussian(3, 3, 34.3, 45.3);     //Applying gaussian blue
 
-            Image<Gray, byte> cannyimage = new Image<Gray, byte>(capturedimage.Width, capturedimage.Height, new Gray(0));
 
-            cannyimage = capturedimage.Canny(90, 20);
+            Image<Gray, byte> cannyimage = new Image<Gray, byte>(capturedimage.Width, capturedimage.Height, new Gray(0));    //Setting up the parameters for the canny image
 
-            //MoravecCornersDetector mcd = new MoravecCornersDetector();
-            //List<IntPoint> edges = mcd.ProcessImage(cannyimage.Bitmap);
+            cannyimage = gauss.Canny(90, 20);                      //Applying canny image 
 
-            //foreach (IntPoint edge in edges)
+            picbox.Image = cannyimage.Bitmap;                                          //Displaying canny image
+            picbox.Paint += new PaintEventHandler(this.drawrect);                      //Drawing the rectangle over the video
+
+
+            //for (int x = 0; i < capturedimage.Width; i++)                                            //To get the pixel data of the edges fronm the the canny image
             //{
-            //    Console.WriteLine(edge);
+            //    for (int y = 0; j < capturedimage.Height; j++)                                         
+            //    {
+            //        Color pixel = cannyimage.Bitmap.GetPixel(x, y);
+
+            //        Console.WriteLine(pixel);
+            //    }
             //}
-
-
-            picbox.Image = cannyimage.Bitmap;
-
-
-
-            for (int i = 0; i < capturedimage.Width; i++)
-            {
-                for (int j = 0; j < capturedimage.Height; j++)
-                {
-                    Color pixel = cannyimage.Bitmap.GetPixel(i, j);
-
-                    Console.WriteLine(pixel);
-                }
-            }
-
 
             //if (rects.Length > 0)
             //{
@@ -113,22 +97,27 @@ namespace Imagecaptureexp
 
         }
 
+        private void drawrect(object sender, PaintEventArgs e)
+        {
+            e.Graphics.DrawRectangle(Pens.Red, GetRectangle());                  //Drawing the set rectangle
+        }
+
+        Rectangle quadrant;
+
+        private Rectangle GetRectangle()                                         //Setting the size and postion of rectangle selection
+        {
+            quadrant = new Rectangle();
+            quadrant.X = picbox.Width/2;
+            quadrant.Y = picbox.Height/2;
+            quadrant.Width = 50;
+            quadrant.Height = 100;
+
+            return quadrant;
+        }
+
         static readonly CascadeClassifier faceClassifier = new CascadeClassifier("haarcascade_frontalface_alt_tree.xml");
         private void Device_NewFrame(object sender, EventArgs eventArgs)
         {
-            //capture.Retrieve(frame);
-
-            //Bitmap bitmap = (Bitmap)eventArgs.Frame.Clone();
-            //try
-            //{
-            //    var filter = new Mirror(false, true);
-            //    filter.ApplyInPlace(bitmap);
-            //}
-            //catch (Exception e)
-            //{
-            //    Console.WriteLine(e.Message);
-            //}
-
             capture.Retrieve(frame, 0);
             Image<Bgr, byte> capturedimage = frame.ToImage<Bgr, byte>();
 
@@ -149,25 +138,20 @@ namespace Imagecaptureexp
 
             foreach (Rectangle rectangle in facerectangles)
             {
-
                 capturedimage.Draw(rectangle, new Bgr(Color.Green), 2);
-
-
             }
 
-           // picbox.Image = capturedimage.Bitmap;
+            // picbox.Image = capturedimage.Bitmap;
 
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-          
-                Application.Exit();
-                capture.Stop();
-            
+            Application.Exit();
+            capture.Stop();
         }
     }
 }
-      
+
 
 
