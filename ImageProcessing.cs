@@ -43,11 +43,10 @@ namespace Imagecaptureexp
 
         private void ProcessFrame(object sender, EventArgs e)
         {
-            if (capture != null && capture.Ptr != IntPtr.Zero)
+            if (capture != null)
             {
-                capture.Retrieve(frame, 0);
+                capture.Read(frame);
                 picbox.Image = frame.Bitmap;
-
             }
         }
 
@@ -57,13 +56,16 @@ namespace Imagecaptureexp
             capture.ImageGrabbed += Imageprocess;
         }
 
-        int imagenumber = 0;
-
+        Image<Gray, byte> Rightrect = null;
+        Image<Gray, byte> Leftrect = null;
+        Image<Gray, byte> CenterRed = null;
+        Image<Gray, byte> CenterYellow = null;
+        Image<Gray, byte> CenterGreen = null;
         private void Imageprocess(object sender, EventArgs eventArgs)
         {
 
 
-            capture.Retrieve(frame, 0);
+            capture.Read(frame);
             Image<Gray, byte> capturedimage = frame.ToImage<Gray, byte>();
 
             //Image<Gray, byte> gray_image = capturedimage.Convert<Gray, byte>();
@@ -72,10 +74,36 @@ namespace Imagecaptureexp
 
             Image<Gray, byte> cannyimage = new Image<Gray, byte>(capturedimage.Width, capturedimage.Height, new Gray(0));    //Setting up the parameters for the canny image
 
-            cannyimage = gauss.Canny(90, 20);                      //Applying canny image 
+
+            Image<Gray, byte> Binary = gauss.ThresholdBinary(new Gray(110), new Gray(90));
+
+            cannyimage = Binary.Canny(90, 20);                      //Applying canny image 
+
+            try
+            {
+                Rightrect = cannyimage.Copy(GetRectangle(picbox.Width - (picbox.Width / 6) - 60, 100, 120, 200)).Resize(120, 200, Emgu.CV.CvEnum.Inter.Cubic);
+                Rightrect.Save(@"C:\games\Image\test.jpg");
+                Leftrect = cannyimage.Copy(GetRectangle((picbox.Width / 6) - 60, 100, 120, 200)).Resize(120, 200, Emgu.CV.CvEnum.Inter.Cubic);
+                Leftrect.Save(@"C:\games\Image\test1.jpg");
+                CenterRed = cannyimage.Copy(GetRectangle((picbox.Width / 2) - 37, 210, 75, 100)).Resize(75, 100, Emgu.CV.CvEnum.Inter.Cubic);
+                CenterRed.Save(@"C:\games\Image\test3.jpg");
+                CenterYellow = cannyimage.Copy(GetRectangle((picbox.Width / 2) - 75, 170, 150, 150)).Resize(150, 150, Emgu.CV.CvEnum.Inter.Cubic);
+                CenterYellow.Save(@"C:\games\Image\test4.jpg");
+                CenterGreen = cannyimage.Copy(GetRectangle((picbox.Width / 2) - 100, 100, 200, 225)).Resize(200, 225, Emgu.CV.CvEnum.Inter.Cubic);
+                CenterGreen.Save(@"C:\games\Image\test5.jpg");
+            }
+            catch(Exception e)
+            {
+
+            }
+
+
+         
+
 
             picbox.Image = cannyimage.Bitmap;                                          //Displaying canny image
             picbox.Paint += new PaintEventHandler(this.drawrect);                      //Drawing the rectangle over the video
+
 
 
             //for (int x = 0; i < capturedimage.Width; i++)                                            //To get the pixel data of the edges fronm the the canny image
@@ -87,62 +115,29 @@ namespace Imagecaptureexp
             //        Console.WriteLine(pixel);
             //    }
             //}
-
-            //if (rects.Length > 0)
-            //{
-            //    string j = "image" + imagenumber + ".jpg";
-            //    //capturedimage.Save(string.Format(@"C:\games\image\{0}", j));
-            //    imagenumber = imagenumber + 1;
-            //}
-
         }
 
-        private void drawrect(object sender, PaintEventArgs e)
+        private void drawrect(object sender, PaintEventArgs e)                                        //Drawing the rectangles 
         {
-            e.Graphics.DrawRectangle(Pens.Red, GetRectangle());                  //Drawing the set rectangle
+            e.Graphics.DrawRectangle(Pens.Red, GetRectangle((picbox.Width/2)-37,210,75,100));         //Center Rectangle       Picbox-Center-(Width of rect/2)
+            e.Graphics.DrawRectangle(Pens.Yellow, GetRectangle((picbox.Width / 2) - 75, 170,150, 150));      //Center Rectangle   Picbox-Center-(Width of rect/2)
+            e.Graphics.DrawRectangle(Pens.Green, GetRectangle((picbox.Width / 2) - 100, 100, 200, 225));
+            e.Graphics.DrawRectangle(Pens.Blue, GetRectangle(picbox.Width-(picbox.Width /6)-60 , 100, 120, 200));                 //Side rectangle
+            e.Graphics.DrawRectangle(Pens.Blue, GetRectangle((picbox.Width / 6)-60, 100, 120, 200));                 //Side rectangle
+
         }
 
         Rectangle quadrant;
 
-        private Rectangle GetRectangle()                                         //Setting the size and postion of rectangle selection
+        private Rectangle GetRectangle(int x, int y ,int w , int h)                                         //Setting the size and postion of rectangle selection
         {
             quadrant = new Rectangle();
-            quadrant.X = picbox.Width/2;
-            quadrant.Y = picbox.Height/2;
-            quadrant.Width = 50;
-            quadrant.Height = 100;
+            quadrant.X = x;
+            quadrant.Y = y;
+            quadrant.Width = w;
+            quadrant.Height = h;
 
             return quadrant;
-        }
-
-        static readonly CascadeClassifier faceClassifier = new CascadeClassifier("haarcascade_frontalface_alt_tree.xml");
-        private void Device_NewFrame(object sender, EventArgs eventArgs)
-        {
-            capture.Retrieve(frame, 0);
-            Image<Bgr, byte> capturedimage = frame.ToImage<Bgr, byte>();
-
-            Image<Gray, byte> image = capturedimage.Convert<Gray, byte>().Clone();
-            Rectangle[] facerectangles = faceClassifier.DetectMultiScale(image, 1.2, 1);
-
-            if (facerectangles.Length > 0)
-            {
-                int NewpointX = 472 - facerectangles[0].X;
-                int NewpointY = 240 - facerectangles[0].Y;
-                Console.WriteLine(facerectangles[0].X);
-                Console.WriteLine(facerectangles[0].Y);
-                textBox1.Invoke(new Action(() => textBox1.Text = facerectangles[0].X.ToString()));
-                textBox2.Invoke(new Action(() => textBox2.Text = NewpointY.ToString()));
-            }
-
-            rects = facerectangles;
-
-            foreach (Rectangle rectangle in facerectangles)
-            {
-                capturedimage.Draw(rectangle, new Bgr(Color.Green), 2);
-            }
-
-            // picbox.Image = capturedimage.Bitmap;
-
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
