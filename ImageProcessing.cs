@@ -13,6 +13,7 @@ using System.Windows.Forms;
 using Emgu.CV.Util;
 using Emgu.CV.Ocl;
 using System.Diagnostics;
+using System.Threading;
 
 namespace Imagecaptureexp
 {
@@ -40,6 +41,12 @@ namespace Imagecaptureexp
                 { Console.WriteLine("Failed"); }
             }
         }
+        Thread thread = new Thread(Newprocess);
+
+        private static void Newprocess()
+        {
+           
+        }
 
         private void ProcessFrame(object sender, EventArgs e)
         {
@@ -54,6 +61,21 @@ namespace Imagecaptureexp
         {
             //capture.ImageGrabbed += Device_NewFrame;
             capture.ImageGrabbed += Imageprocess;
+            capture.ImageGrabbed += processes;
+        }
+
+        private void processes(object sender , EventArgs eventArgs)
+        {
+            for (int x = 0; x < Rightrect.Width; x++)                                            //To get the pixel data of the edges fronm the the canny image
+            {
+                for (int y = 0; y < Rightrect.Height; y++)
+                {
+                    Color pixel1 = Rightrect.Bitmap.GetPixel(x, y);
+                    Color pixel2 = Leftrect.Bitmap.GetPixel(x, y);
+
+
+                }
+            }
         }
 
         Image<Gray, byte> Rightrect = null;
@@ -82,27 +104,24 @@ namespace Imagecaptureexp
             try
             {
                 Rightrect = cannyimage.Copy(GetRectangle(picbox.Width - (picbox.Width / 6) - 60, 100, 120, 200)).Resize(120, 200, Emgu.CV.CvEnum.Inter.Cubic);
-                Rightrect.Save(@"C:\games\Image\test.jpg");
+                Rightrect.Save(string.Format(@"C:\games\Image\test.jpg"));
                 Leftrect = cannyimage.Copy(GetRectangle((picbox.Width / 6) - 60, 100, 120, 200)).Resize(120, 200, Emgu.CV.CvEnum.Inter.Cubic);
-                Leftrect.Save(@"C:\games\Image\test1.jpg");
+                Leftrect.Save(string.Format(@"C:\games\Image\test1.jpg"));
                 CenterRed = cannyimage.Copy(GetRectangle((picbox.Width / 2) - 37, 210, 75, 100)).Resize(75, 100, Emgu.CV.CvEnum.Inter.Cubic);
-                CenterRed.Save(@"C:\games\Image\test3.jpg");
+                CenterRed.Save(string.Format(@"C:\games\Image\test3.jpg"));
                 CenterYellow = cannyimage.Copy(GetRectangle((picbox.Width / 2) - 75, 170, 150, 150)).Resize(150, 150, Emgu.CV.CvEnum.Inter.Cubic);
-                CenterYellow.Save(@"C:\games\Image\test4.jpg");
+                CenterYellow.Save(string.Format(@"C:\games\Image\test4.jpg"));
                 CenterGreen = cannyimage.Copy(GetRectangle((picbox.Width / 2) - 100, 100, 200, 225)).Resize(200, 225, Emgu.CV.CvEnum.Inter.Cubic);
-                CenterGreen.Save(@"C:\games\Image\test5.jpg");
+                CenterGreen.Save(string.Format(@"C:\games\Image\test5.jpg"));
             }
             catch(Exception e)
             {
 
             }
 
-
-         
-
-
             picbox.Image = cannyimage.Bitmap;                                          //Displaying canny image
             picbox.Paint += new PaintEventHandler(this.drawrect);                      //Drawing the rectangle over the video
+
 
 
 
